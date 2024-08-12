@@ -75,15 +75,15 @@ def inspect_state(S, dynamics, i, j, k, mid_states = True): #stats about specifi
                 print(' ,',el)
 
 def init_env_dynamics(bid):
-    def init_dealer_bust():
-        def soft_to_hard(soft, hard): #podlicza przejscia z softa do harda
+    def init_dealer_bust(): #returns probabilities of dealer busting with respect to his visible card 
+        def soft_to_hard(soft, hard): #takes paths from soft hands to hard (when ace becomes 1 instead of 11)
             for i in range (12, 17):
-                soft[i] += 4/13*hard[i] #bo +10 i -10 bo as traci na wartosci 10
-                for k in range (i - 12):
+                soft[i] += 4/13*hard[i] #+10 -> Bust danger -> lower ace value (-10) 10-10=0
+                for k in range (i - 12): #for example: soft 14 + 9 = soft 23 -> lower ace value -> hard 13
                     soft[i] += 1/13*hard[i - 1 - k]
-            
+        #DP. recursive probability. 
         dealer_bust = np.zeros(12)
-        hard, soft, directly = np.zeros(17), np.zeros(17), np.zeros(17) #directly dotyczy tylko hard, bo nie da sie z softa < 17 zbustować
+        hard, soft, directly = np.zeros(17), np.zeros(17), np.zeros(17) #directly is related to hard only, because you cant bust from soft <17
         directly = [0]*(17)
         directly[16],directly[15], directly[14], directly[13], directly[12] = 8/13, 7/13, 6/13, 5/13, 4/13
         #part 1: hard 6 - 16
@@ -94,7 +94,7 @@ def init_env_dynamics(bid):
                 hard[i] = (sum(hard[i + 1: 17]))/13 + directly[i]
             else:
                 hard[i] = (sum(hard[i + 2: 17]))/13 + directly[i]
-        hard[6] = sum(hard[8: 16])/13 + 4/13*hard[16] #kwestia innego prawdopodobienstwa na dropniecie +10
+        hard[6] = sum(hard[8: 16])/13 + 4/13*hard[16] #seperate from others because 4/13 prob. on dropping +10 and here 6+10 = 16 < 17
         #part 2: soft 11 - 16
         soft_to_hard(soft, hard)
         for i in range (15, 10, -1):
@@ -103,11 +103,11 @@ def init_env_dynamics(bid):
         for i in range (5, 1, -1):
             hard[i] = (sum(hard[i + 2: i + 10]) + 4*hard[i + 10] + soft[i + 11])/13
         dealer_bust[:11] = hard[:11] #[0,1,2,3,4,5,6,7,8,9,10,A]
-        dealer_bust[11] = soft[11]
+        dealer_bust[11] = soft[11] #when dealer starts with ace it's soft 11
         print(np.around(np.array(dealer_bust), 5))
         return np.around(np.array(dealer_bust), 5)
 
-    def init_dealer_stands_at(a): #oblicza prawdopodobienstwa ze krupier zostanie na a (a>=17) w zaleznosci od k
+    def init_dealer_stands_at(a): #probability of dealer's hand value =a in the end of a round (also dependant on dealer's visible card)
         def soft_to_hard(soft, hard): 
             for i in range (12, 17):
                 soft[i] += 4/13*hard[i]
@@ -145,7 +145,7 @@ def init_env_dynamics(bid):
         goal_prob[11] = soft[11]
         return np.around(np.array(goal_prob), 5)
 
-    def score(i,j):
+    def score(i,j): #count hand value from (hard,aces number)
         aces = j
         sc = i + 11*aces
         while aces > 0 and sc > 21:
@@ -153,45 +153,43 @@ def init_env_dynamics(bid):
             sc -= 10
         return sc
 
-    def bust_chances(i,j,k):
+    def bust_chances(i,j,k): #agents busting probability
         nonlocal dynamics, bid
         if i + j >= 12:
             dynamics[(S[(i,j,k)], "hit")].append(("BUST", -bid, round((i + j - 8)/13,5)))
             dynamics[(S[(i,j,k)], "double down")].append(("BUST", -2*bid, round((i + j - 8)/13,5)))
 
-    def count_preSum(dealer_stand):
+    def count_preSum(dealer_stand): #prefix sum
         probSum = deepcopy(dealer_stand)
         for k in range (2, 12):
             for i in range (1, len(probSum)):
                 probSum[i][k] += probSum[i - 1][k]
         return probSum
         
-    def win_chances(i,j,k,dealer_bust,dealer_stand): #wygrać można na trzy sposoby: BUST krupiera albo lepszy wynik agenta albo BJ agenta
+    def win_chances(i,j,k,dealer_bust,dealer_stand): #3 ways of winning: dealer's bust, higher score, agent's BJ 
         nonlocal dynamics, bid, probSum
-        prob = dealer_bust[k] #BUST krupiera
-        #oblicz score
+        prob = dealer_bust[k] #dealer's bust
         a,b = round(1/13,5), round(4/13,5)
         res = score(i,j)
-        if res > 21: #bo to jest bust
+        if res > 21: #our bust
             return
         #
-        if res == 21:
+        if res == 21: 
             dynamics[(S[(i,j,k)], "stand")].append(("WIN", 3/2*bid, 1))
         if res <= 17:
             dynamics[(S[(i,j,k)], "stand")].append(("WIN", bid, prob))
         else:
-            idx = res - 18
-            dynamics[(S[(i,j,k)], "stand")].append(("WIN", bid, prob + probSum[idx][k])) #albo bust albo wynik lepszy
-        # mozemy jeszcze wygrac bezposrednio poprzez BJ: czyli po HIT/DOUBLE DOWN
-        if res < 10: #nie wygramy bezposrednio z tego
+            idx = res - 18 #probSum[idx][k] probability of dealer's having lower score than agent
+            dynamics[(S[(i,j,k)], "stand")].append(("WIN", bid, prob + probSum[idx][k])) #dealer's bust or agent's higher score
+        #BJ directly
+        if res < 10: #impossible to win directly in one move from <10
             return
         if res == 11:
             dynamics[(S[(i,j,k)], "hit")].append(("WIN", bid, b))
         else:
             dynamics[(S[(i,j,k)], "hit")].append(("WIN", bid, a))
     
-    def push_chances(i,j,k, dealer_stand):
-        #20-20,19-19,18-18,17-17
+    def push_chances(i,j,k, dealer_stand): #20-20,19-19,18-18,17-17
         nonlocal probSum, dynamics
         res = score(i,j)
         a = 0
@@ -202,22 +200,22 @@ def init_env_dynamics(bid):
         idx = min(3, res - 6)
         prob = 1/13*(probSum[idx][k] + a)
         # print(round(prob,3), res, k)
-        dynamics[(S[(i,j,k)], "double down")].append(("PUSH", 0, round(prob,5))) #remis gdy double downujemy (trzeba jeden krok do przodu prawdopodbienstwo policzyc)
+        dynamics[(S[(i,j,k)], "double down")].append(("PUSH", 0, round(prob,5))) #push after double down. double down is a little different than other actions, because we have to take the next move into account. Double down leads to terminal states only. On contrary, when hitting, we move to the next mid state. 
         if res < 17:
             return
-        dynamics[(S[(i,j,k)], "stand")].append(("PUSH", 0, round(dealer_stand[res - 17][k],5))) #remis gdy standujemy
+        dynamics[(S[(i,j,k)], "stand")].append(("PUSH", 0, round(dealer_stand[res - 17][k],5))) 
         
-    def lose_chances(i,j,k): #albo agent BUST albo mniej punktow od krupiera, ale BUST mamy jako oddzielny stan terminalny, więc tylko mniej pkt od krupiera
+    def lose_chances(i,j,k): #agent's BUST or lower score, but BUST is a different terminal state in my algorithm, so just the lower score case
         nonlocal dynamics, probSum_reverse
         if score(i,j) < 17:
             dynamics[(S[(i,j,k)], "stand")].append(("LOSE", -bid, round(1 - dealer_bust[k],5))) #jesli mamy mniej niz 17 to pzregramy, jesli dealer nie zbustuje
         if 17 <= score(i,j) < 21:
             dynamics[(S[(i,j,k)], "stand")].append(("LOSE", -bid, round(probSum_reverse[-2 - (score(i,j) - 17)][k],5))) #np.dla 17 diler moze miec 18,19,20,21 
 
-    def mid_states(i,j,k):
+    def mid_states(i,j,k): #after hitting
         nonlocal dynamics
         a,b = round(1/13,5), round(4/13,5)
-        if score(i, j + 1) < 21: #gdy =21 to juz mam wziete pod uwage jako WIN poprzez BJ
+        if score(i, j + 1) < 21: #when =21 its WIN through a direct BJ
             dynamics[(S[(i,j,k)], "hit")].append(((i,j + 1,k), 0, a))
         if score(i + 10,j) < 21: 
             dynamics[(S[(i,j,k)], "hit")].append(((i + 10,j,k), 0, b))
@@ -225,11 +223,11 @@ def init_env_dynamics(bid):
             if score(i + add, j) < 21:
                 dynamics[(S[(i,j,k)], "hit")].append(((i + add, j, k), 0, a))
 
-    def complete_double_down(i,j,k):
-        #LOSE
+    def complete_double_down(i,j,k):  #double down is a little bit different and probabilities are harder to calculate, so i take advantage of already counted probabilities in env_dynamics
+        #LOSE - sum all probabilities of losing after 'stand' in possible next states
         prob = 0
         if score(i,j + 1) < 21:
-            prob += 1/13*next(filter(lambda x: x[0] == "LOSE", dynamics[(S[(i,j + 1,k)], "stand")]))[2]
+            prob += 1/13*next(filter(lambda x: x[0] == "LOSE", dynamics[(S[(i,j + 1,k)], "stand")]))[2] 
         for add in range (2, 10):
             if score(i + add, j) >= 21:
                 break
@@ -257,7 +255,6 @@ def init_env_dynamics(bid):
     S,cnt,states = init_states()
     dynamics = defaultdict(list) #dict[(s,a)] = [(next_s, r, probability), ...]
     dealer_bust = init_dealer_bust()
-    #dealer_bust = [0.0, 0.0, 0.35, 0.37, 0.4, 0.42, 0.42, 0.26, 0.24, 0.23, 0.23, 0.17]
     dealer_stand = np.around(np.array([init_dealer_stands_at(17), init_dealer_stands_at(18), init_dealer_stands_at(19), init_dealer_stands_at(20), init_dealer_stands_at(21)]),5)
     probSum = np.around(count_preSum(dealer_stand),5)
     probSum_reverse = np.around(count_preSum(dealer_stand[::-1]),5)
