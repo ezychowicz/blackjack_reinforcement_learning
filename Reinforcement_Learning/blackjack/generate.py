@@ -2,6 +2,7 @@ import numpy as np
 from math import comb
 from collections import defaultdict
 from copy import deepcopy 
+
 def init_draw():
     idx_dict = {}
     starting_hands = []
@@ -45,7 +46,7 @@ def draw(starting_hands, hand_prob, dealer_prob):
     return hand, dealer_hand
 
 def init_states():
-    #s = (player_hard_score, player_aces, dealer_card)
+    #s = (player_hard_score, players_aces, dealer_card)
     S = {}
     cnt = 0
     states = []
@@ -57,7 +58,7 @@ def init_states():
                 cnt += 1
     return S,cnt,states
 
-def inspect_state(S, dynamics, i, j, k, mid_states = True):
+def inspect_state(S, dynamics, i, j, k, mid_states = True): #stats about specific state
     flag = True
     print("STAND:", dynamics.get((S[(i,j,k)],"stand")))
     print("DOUBLE DOWN:", dynamics.get((S[(i,j,k)],"double down")))
