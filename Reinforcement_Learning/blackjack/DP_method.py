@@ -1,4 +1,4 @@
-import generate as gen
+import Reinforcement_Learning.blackjack.generate_dynamics as gen
 import numpy as np
 
 S, states_number, states = gen.init_states()

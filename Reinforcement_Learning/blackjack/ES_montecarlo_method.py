@@ -1,6 +1,6 @@
 #RL using Exploring Start policy Monte Carlo method
 import random
-from simplified_blackjack import starting_hands
+from Reinforcement_Learning.blackjack.DP_method import starting_hands
 import numpy as np
 from collections import defaultdict
 def init_states():  #have to modify, you can only double down at the beginning. In DP method I managed to avoid adding a dimension to a state by computing additional probabilities (one step forward for after double down)
