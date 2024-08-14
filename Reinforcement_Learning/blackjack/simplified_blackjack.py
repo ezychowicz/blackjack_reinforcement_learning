@@ -45,13 +45,6 @@ def value_iteration(S, states_number, dynamics, epsilon = 0.0000001, discount = 
 
 policy, v = value_iteration(S, states_number, dynamics)
 
-for hand in starting_hands:
-    print("our hand:", hand)
-    for k in range (2, 12):
-        print("for dealer's", k, policy[S[(hand[0], hand[1], k)]])
-    print("_____________")
-
-np.set_printoptions(threshold=np.inf)
 
 def calculate_q(S,s,a,discount = 1):
     possibilities = dynamics[(S[s], a)]
@@ -66,4 +59,13 @@ def inspect_value(S, dynamics, i, j, k, mid_states = True):
     for a in ["stand", "hit", "double down"]:
         print("Exp. val of action", a, calculate_q(S,(i,j,k),a))
 
-inspect_value(S,dynamics, 5,1,6)
+if __name__ == "__main__":
+    for hand in starting_hands:
+        print("our hand:", hand)
+        for k in range (2, 12):
+            print("for dealer's", k, policy[S[(hand[0], hand[1], k)]])
+        print("_____________")
+
+    np.set_printoptions(threshold=np.inf)
+
+    inspect_value(S,dynamics, 5,1,6)

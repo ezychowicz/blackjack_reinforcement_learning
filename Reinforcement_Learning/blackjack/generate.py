@@ -32,7 +32,6 @@ def init_draw():
     return starting_hands, hand_prob, dealer_prob, idx_dict, idx_dealer
 
 
-
 def draw(starting_hands, hand_prob, dealer_prob):
     indices = [i for i in range (27)]
     hand = np.random.choice(indices, 1, hand_prob, replace = False)
@@ -104,7 +103,7 @@ def init_env_dynamics(bid):
             hard[i] = (sum(hard[i + 2: i + 10]) + 4*hard[i + 10] + soft[i + 11])/13
         dealer_bust[:11] = hard[:11] #[0,1,2,3,4,5,6,7,8,9,10,A]
         dealer_bust[11] = soft[11] #when dealer starts with ace it's soft 11
-        print(np.around(np.array(dealer_bust), 5))
+        #print(np.around(np.array(dealer_bust), 5))
         return np.around(np.array(dealer_bust), 5)
 
     def init_dealer_stands_at(a): #probability of dealer's hand value =a in the end of a round (also dependant on dealer's visible card)
@@ -258,7 +257,7 @@ def init_env_dynamics(bid):
     dealer_stand = np.around(np.array([init_dealer_stands_at(17), init_dealer_stands_at(18), init_dealer_stands_at(19), init_dealer_stands_at(20), init_dealer_stands_at(21)]),5)
     probSum = np.around(count_preSum(dealer_stand),5)
     probSum_reverse = np.around(count_preSum(dealer_stand[::-1]),5)
-    print(probSum[-1])
+    #print(probSum[-1])
     for i in range (22):
         for j in range (22 - i):
             for k in range (2, 12): 
