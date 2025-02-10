@@ -1,4 +1,4 @@
-import Reinforcement_Learning.blackjack.generate_dynamics as gen
+import generate_dynamics as gen
 import numpy as np
 
 S, states_number, states = gen.init_states()
@@ -7,7 +7,7 @@ starting_hands, hand_prob, dealer_prob, idx_hand, idx_dealer = gen.init_draw()
 S["WIN"], S["LOSE"], S["PUSH"], S["BUST"] = states_number, states_number + 1, states_number + 2, states_number + 3 
 states_number += 4 #WIN,LOSE,BUST,PUSH (kind of artificial states)
 
-def value_iteration(S, states_number, dynamics, epsilon = 0.0000001, discount = 1): #returns deterministic policy (not stochastic)
+def value_iteration(S, states_number, dynamics, epsilon = 0.00001, discount = 1): #returns deterministic policy (not stochastic)
     A = ["hit", "stand", "double down"]
     def extract_policy():
         nonlocal S, dynamics, v
